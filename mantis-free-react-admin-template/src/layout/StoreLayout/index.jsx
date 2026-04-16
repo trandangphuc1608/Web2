@@ -48,7 +48,8 @@ export default function StoreLayout() {
         const endpoint = isLoginMode ? 'login' : 'register';
 
         try {
-            const response = await fetch(`http://localhost:8900/api/users/${endpoint}`, {
+            // ĐÃ SỬA: Đổi "users" thành "accounts" để khớp với Gateway
+            const response = await fetch(`http://localhost:8900/api/accounts/${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userName: loginName, password: loginPassword })

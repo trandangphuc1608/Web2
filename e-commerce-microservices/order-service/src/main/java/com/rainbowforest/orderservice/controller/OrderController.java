@@ -10,6 +10,8 @@ import com.rainbowforest.orderservice.http.header.HeaderGenerator;
 import com.rainbowforest.orderservice.service.CartService;
 import com.rainbowforest.orderservice.service.OrderService;
 import com.rainbowforest.orderservice.utilities.OrderUtilities;
+import com.rainbowforest.orderservice.repository.ItemRepository; // ĐÃ THÊM
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +40,10 @@ public class OrderController {
 
     @Autowired
     private HeaderGenerator headerGenerator;
-    
+
+    @Autowired
+    private ItemRepository itemRepository; // ĐÃ THÊM ĐỂ CỨU DỮ LIỆU
+
     @PostMapping(value = "/order/{userId}")
     public ResponseEntity<Order> saveOrder(
             @PathVariable("userId") Long userId,
@@ -47,22 +52,38 @@ public class OrderController {
         
         List<Item> cart = cartService.getAllItemsFromCart(cartId);
         User user = userClient.getUserById(userId);   
+        
         if(cart != null && user != null) {
+            
+            // CHỐT CHẶN CUỐI: Lưu từng món hàng (Item) vào DB MySQL trước để tránh lỗi TransientObjectException
+            for (Item item : cart) {
+                itemRepository.save(item); 
+            }
+
             Order order = this.createOrder(cart, user);
+
             try{
                 orderService.saveOrder(order);
 
-                ShippingDto shippingDto = new ShippingDto();
-                shippingDto.setOrderId(order.getId());
-                shippingDto.setAddress("Địa chỉ khách hàng"); 
-                shippingClient.createShipping(shippingDto);
+                // FIX LỖI TIMEOUT SHIPPING BẰNG TRY-CATCH
+                try {
+                    ShippingDto shippingDto = new ShippingDto();
+                    shippingDto.setOrderId(order.getId());
+                    shippingDto.setAddress("Địa chỉ khách hàng"); 
+                    shippingClient.createShipping(shippingDto);
+                } catch (Exception shipEx) {
+                    System.out.println("CẢNH BÁO: Không thể gọi Shipping Service, bỏ qua bước tạo vận đơn.");
+                    shipEx.printStackTrace();
+                }
 
+                // Xóa giỏ hàng sau khi đặt thành công
                 cartService.deleteCart(cartId);
                 
                 return new ResponseEntity<Order>(
                         order, 
                         headerGenerator.getHeadersForSuccessPostMethod(request, order.getId()),
                         HttpStatus.CREATED);
+                        
             }catch (Exception ex){
                 ex.printStackTrace();
                 return new ResponseEntity<Order>(

@@ -23,7 +23,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
             .authorizeRequests()
                 // 2. LỆNH QUAN TRỌNG NHẤT: Mở cửa cho mọi tiếng "gõ cửa" (OPTIONS) từ React
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll() 
-                .antMatchers("/api/users/login", "/api/users/register").permitAll()
+                // ĐÃ SỬA: Đổi users thành accounts để khớp với cấu hình Route
+                .antMatchers("/api/accounts/login", "/api/accounts/register").permitAll()
                 // Tạm thời cho qua tất cả để test hiển thị
                 .anyRequest().permitAll(); 
     }
@@ -35,7 +36,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         CorsConfiguration config = new CorsConfiguration();
         
         config.setAllowCredentials(false); // Bắt buộc false khi dùng dấu *
-        config.addAllowedOrigin("*");      // Cho phép React (127.0.0.1:3000) chui vào
+        config.addAllowedOrigin("*");      // Cho phép React chui vào
         config.addAllowedHeader("*");      // Chấp nhận mọi loại Headers
         config.addAllowedMethod("*");      // Chấp nhận GET, POST, PUT, DELETE, OPTIONS
         

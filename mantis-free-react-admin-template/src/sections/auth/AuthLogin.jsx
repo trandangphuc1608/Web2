@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 // material-ui
 import Button from '@mui/material/Button';
@@ -31,8 +31,11 @@ import EyeInvisibleOutlined from '@ant-design/icons/EyeInvisibleOutlined';
 
 export default function AuthLogin({ isDemo = false }) {
   const [checked, setChecked] = React.useState(false);
-
   const [showPassword, setShowPassword] = React.useState(false);
+  
+  // Dùng để chuyển trang sau khi đăng nhập thành công
+  const navigate = useNavigate();
+
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -45,32 +48,73 @@ export default function AuthLogin({ isDemo = false }) {
     <>
       <Formik
         initialValues={{
-          email: 'info@codedthemes.com',
-          password: '123456',
+          email: '', // Để trống cho người dùng nhập
+          password: '',
           submit: null
         }}
         validationSchema={Yup.object().shape({
-          email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
-          password: Yup.string()
-            .required('Password is required')
-            .test('no-leading-trailing-whitespace', 'Password cannot start or end with spaces', (value) => value === value.trim())
-            .max(10, 'Password must be less than 10 characters')
+          email: Yup.string().max(255).required('Tên đăng nhập / Email là bắt buộc'),
+          password: Yup.string().max(255).required('Mật khẩu là bắt buộc')
         })}
+        
+        // ĐÃ THÊM: Logic xử lý khi bấm nút Đăng nhập
+        onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
+          try {
+            // Gọi API Đăng nhập với đường dẫn accounts chuẩn
+            const response = await fetch('http://localhost:8900/api/accounts/login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              // Backend Spring Boot của bạn mong đợi 'userName' thay vì 'email'
+              body: JSON.stringify({
+                userName: values.email, 
+                password: values.password
+              })
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              
+              // Lưu thông tin vào LocalStorage để duy trì đăng nhập
+              localStorage.setItem('user_info', JSON.stringify(userData));
+              
+              setStatus({ success: true });
+              setSubmitting(false);
+              
+              // Chuyển hướng vào trang chủ Admin / Dashboard
+              alert('Đăng nhập thành công!');
+              navigate('/admin'); // <--- Sửa đường dẫn này nếu trang chủ của bạn khác
+              
+            } else {
+              // Bắt lỗi 401 hoặc lỗi khác từ Server
+              setStatus({ success: false });
+              setErrors({ submit: 'Tài khoản hoặc mật khẩu không chính xác!' });
+              setSubmitting(false);
+            }
+          } catch (err) {
+            console.error('Lỗi kết nối:', err);
+            setStatus({ success: false });
+            setErrors({ submit: 'Lỗi kết nối đến máy chủ. Vui lòng thử lại!' });
+            setSubmitting(false);
+          }
+        }}
       >
-        {({ errors, handleBlur, handleChange, touched, values }) => (
-          <form noValidate>
+        {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
+          // ĐÃ SỬA: Gắn sự kiện handleSubmit vào form
+          <form noValidate onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               <Grid size={12}>
                 <Stack sx={{ gap: 1 }}>
-                  <InputLabel htmlFor="email-login">Email Address</InputLabel>
+                  <InputLabel htmlFor="email-login">Tên hiển thị (Username)</InputLabel>
                   <OutlinedInput
                     id="email-login"
-                    type="email"
+                    type="text"
                     value={values.email}
                     name="email"
                     onBlur={handleBlur}
                     onChange={handleChange}
-                    placeholder="Enter email address"
+                    placeholder="Nhập tên đăng nhập"
                     fullWidth
                     error={Boolean(touched.email && errors.email)}
                   />
@@ -83,7 +127,7 @@ export default function AuthLogin({ isDemo = false }) {
               </Grid>
               <Grid size={12}>
                 <Stack sx={{ gap: 1 }}>
-                  <InputLabel htmlFor="password-login">Password</InputLabel>
+                  <InputLabel htmlFor="password-login">Mật khẩu</InputLabel>
                   <OutlinedInput
                     fullWidth
                     error={Boolean(touched.password && errors.password)}
@@ -106,7 +150,7 @@ export default function AuthLogin({ isDemo = false }) {
                         </IconButton>
                       </InputAdornment>
                     }
-                    placeholder="Enter password"
+                    placeholder="Nhập mật khẩu"
                   />
                 </Stack>
                 {touched.password && errors.password && (
@@ -115,6 +159,7 @@ export default function AuthLogin({ isDemo = false }) {
                   </FormHelperText>
                 )}
               </Grid>
+              
               <Grid sx={{ mt: -1 }} size={12}>
                 <Stack direction="row" sx={{ gap: 2, alignItems: 'baseline', justifyContent: 'space-between' }}>
                   <FormControlLabel
@@ -127,17 +172,36 @@ export default function AuthLogin({ isDemo = false }) {
                         size="small"
                       />
                     }
-                    label={<Typography variant="h6">Keep me sign in</Typography>}
+                    label={<Typography variant="h6">Ghi nhớ đăng nhập</Typography>}
                   />
                   <Link variant="h6" component={RouterLink} to="#" color="text.primary">
-                    Forgot Password?
+                    Quên mật khẩu?
                   </Link>
                 </Stack>
               </Grid>
+
+              {/* ĐÃ THÊM: Hiển thị thông báo lỗi nếu sai pass hoặc lỗi mạng */}
+              {errors.submit && (
+                <Grid size={12}>
+                  <FormHelperText error sx={{ textAlign: 'center', fontSize: '14px' }}>
+                    {errors.submit}
+                  </FormHelperText>
+                </Grid>
+              )}
+
               <Grid size={12}>
                 <AnimateButton>
-                  <Button fullWidth size="large" variant="contained" color="primary">
-                    Login
+                  {/* ĐÃ SỬA: Thêm type="submit" và disabled khi đang gọi API */}
+                  <Button 
+                    disableElevation 
+                    disabled={isSubmitting} 
+                    fullWidth 
+                    size="large" 
+                    type="submit" 
+                    variant="contained" 
+                    color="primary"
+                  >
+                    {isSubmitting ? 'Đang xử lý...' : 'VÀO CỬA HÀNG'}
                   </Button>
                 </AnimateButton>
               </Grid>

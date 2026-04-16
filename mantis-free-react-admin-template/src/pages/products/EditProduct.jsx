@@ -59,7 +59,7 @@ export default function EditProduct() {
                     category: formData.category,
                     price: parseFloat(formData.price),
                     availability: parseInt(formData.availability, 10),
-                    discription: 'Đã cập nhật',
+                    discription: 'Đa cap nhat',
                     imageUrl: formData.imageUrl // Giữ nguyên ảnh cũ nếu không đổi
                 })
             });
