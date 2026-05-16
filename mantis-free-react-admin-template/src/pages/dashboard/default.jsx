@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // material-ui
 import Avatar from '@mui/material/Avatar';
@@ -16,6 +16,13 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Chip from '@mui/material/Chip';
 
 // project imports
 import MainCard from 'components/MainCard';
@@ -24,7 +31,7 @@ import MonthlyBarChart from 'sections/dashboard/default/MonthlyBarChart';
 import ReportAreaChart from 'sections/dashboard/default/ReportAreaChart';
 import UniqueVisitorCard from 'sections/dashboard/default/UniqueVisitorCard';
 import SaleReportCard from 'sections/dashboard/default/SaleReportCard';
-import OrdersTable from 'sections/dashboard/default/OrdersTable';
+import { API_URL } from 'config';
 
 // assets
 import EllipsisOutlined from '@ant-design/icons/EllipsisOutlined';
@@ -60,6 +67,48 @@ export default function DashboardDefault() {
   const [orderMenuAnchor, setOrderMenuAnchor] = useState(null);
   const [analyticsMenuAnchor, setAnalyticsMenuAnchor] = useState(null);
 
+  // STATE LƯU DỮ LIỆU THẬT
+  const [stats, setStats] = useState({ products: 0, categories: 0, reviews: 0 });
+  const [recentProducts, setRecentProducts] = useState([]);
+
+  // FETCH DATA TỪ BACKEND
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const timestamp = new Date().getTime();
+        const [prodRes, catRes, revRes] = await Promise.all([
+          fetch(`${API_URL}/api/catalog/products?t=${timestamp}`),
+          fetch(`${API_URL}/api/catalog/admin/categories?t=${timestamp}`),
+          fetch(`${API_URL}/api/recommendation/reviews?t=${timestamp}`)
+        ]);
+
+        const prodData = await prodRes.json();
+        const catData = await catRes.json();
+        const revData = await revRes.json();
+
+        // Đảm bảo dữ liệu là mảng
+        const products = Array.isArray(prodData) ? prodData : (prodData.data || prodData.content || []);
+        const categories = Array.isArray(catData) ? catData : [];
+        const reviews = Array.isArray(revData) ? revData : [];
+
+        // Cập nhật số liệu tổng
+        setStats({
+          products: products.length,
+          categories: categories.length,
+          reviews: reviews.length
+        });
+
+        // Lấy 5 sản phẩm mới nhất
+        const sortedProducts = [...products].sort((a, b) => (b.id || b.productId) - (a.id || a.productId)).slice(0, 5);
+        setRecentProducts(sortedProducts);
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu Dashboard:", error);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const handleOrderMenuClick = (event) => {
     setOrderMenuAnchor(event.currentTarget);
   };
@@ -78,21 +127,22 @@ export default function DashboardDefault() {
     <Grid container rowSpacing={4.5} columnSpacing={2.75}>
       {/* row 1 */}
       <Grid sx={{ mb: -2.25 }} size={12}>
-        <Typography variant="h5">Dashboard</Typography>
+        <Typography variant="h5">Tổng Quan Hệ Thống</Typography>
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <AnalyticEcommerce title="Total Page Views" count="4,42,236" percentage={59.3} extra="35,000" />
+        <AnalyticEcommerce title="Tổng Sản Phẩm" count={stats.products.toString()} percentage={12.5} extra="Đang mở bán" />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <AnalyticEcommerce title="Total Users" count="78,250" percentage={70.5} extra="8,900" />
+        <AnalyticEcommerce title="Danh Mục Món Ăn" count={stats.categories.toString()} percentage={5.2} extra="Hoạt động" />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <AnalyticEcommerce title="Total Order" count="18,800" percentage={27.4} isLoss color="warning" extra="1,943" />
+        <AnalyticEcommerce title="Lượt Đánh Giá" count={stats.reviews.toString()} percentage={27.4} color="warning" extra="Khách hàng" />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <AnalyticEcommerce title="Total Sales" count="35,078" percentage={27.4} isLoss color="warning" extra="20,395" />
+        <AnalyticEcommerce title="Tổng Doanh Thu (Giả lập)" count="35,078,000 ₫" percentage={8.4} color="success" extra="Tuần này" />
       </Grid>
       <Grid sx={{ display: { sm: 'none', md: 'block', lg: 'none' } }} size={{ md: 8 }} />
+      
       {/* row 2 */}
       <Grid size={{ xs: 12, md: 7, lg: 8 }}>
         <UniqueVisitorCard />
@@ -100,7 +150,7 @@ export default function DashboardDefault() {
       <Grid size={{ xs: 12, md: 5, lg: 4 }}>
         <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
           <Grid>
-            <Typography variant="h5">Income Overview</Typography>
+            <Typography variant="h5">Biểu Đồ Thu Nhập</Typography>
           </Grid>
           <Grid />
         </Grid>
@@ -108,19 +158,20 @@ export default function DashboardDefault() {
           <Box sx={{ p: 3, pb: 0 }}>
             <Stack sx={{ gap: 2 }}>
               <Typography variant="h6" color="text.secondary">
-                This Week Statistics
+                Thống kê tuần này
               </Typography>
-              <Typography variant="h3">$7,650</Typography>
+              <Typography variant="h3">7,650,000 ₫</Typography>
             </Stack>
           </Box>
           <MonthlyBarChart />
         </MainCard>
       </Grid>
+
       {/* row 3 */}
       <Grid size={{ xs: 12, md: 7, lg: 8 }}>
         <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
           <Grid>
-            <Typography variant="h5">Recent Orders</Typography>
+            <Typography variant="h5">Sản Phẩm Mới Thêm</Typography>
           </Grid>
           <Grid>
             <IconButton onClick={handleOrderMenuClick}>
@@ -135,20 +186,58 @@ export default function DashboardDefault() {
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-              <MenuItem onClick={handleOrderMenuClose}>Export as CSV</MenuItem>
-              <MenuItem onClick={handleOrderMenuClose}>Export as Excel</MenuItem>
-              <MenuItem onClick={handleOrderMenuClose}>Print Table</MenuItem>
+              <MenuItem onClick={handleOrderMenuClose}>Xuất file CSV</MenuItem>
+              <MenuItem onClick={handleOrderMenuClose}>Xuất file Excel</MenuItem>
+              <MenuItem onClick={handleOrderMenuClose}>In Bảng</MenuItem>
             </Menu>
           </Grid>
         </Grid>
         <MainCard sx={{ mt: 2 }} content={false}>
-          <OrdersTable />
+          {/* THAY THẾ OrdersTable BẰNG BẢNG DATA SẢN PHẨM THẬT */}
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Tên Sản Phẩm</TableCell>
+                  <TableCell>Danh Mục</TableCell>
+                  <TableCell align="right">Giá Bán</TableCell>
+                  <TableCell align="center">Trạng Thái</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {recentProducts.length > 0 ? recentProducts.map((row) => {
+                  const id = row.id || row.productId;
+                  const price = row.price || 0;
+                  return (
+                    <TableRow hover key={id}>
+                      <TableCell>{id}</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>{row.productName || row.name}</TableCell>
+                      <TableCell>{row.category}</TableCell>
+                      <TableCell align="right">{price.toLocaleString('vi-VN')} ₫</TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                            label={(row.availability > 0 || row.availability === undefined) ? 'Còn Hàng' : 'Hết Hàng'} 
+                            color={(row.availability > 0 || row.availability === undefined) ? 'success' : 'error'} 
+                            size="small" 
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )
+                }) : (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center">Đang tải dữ liệu hoặc chưa có sản phẩm...</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </MainCard>
       </Grid>
       <Grid size={{ xs: 12, md: 5, lg: 4 }}>
         <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
           <Grid>
-            <Typography variant="h5">Analytics Report</Typography>
+            <Typography variant="h5">Báo Cáo Phân Tích</Typography>
           </Grid>
           <Grid>
             <IconButton onClick={handleAnalyticsMenuClick}>
@@ -163,30 +252,31 @@ export default function DashboardDefault() {
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-              <MenuItem onClick={handleAnalyticsMenuClose}>Weekly</MenuItem>
-              <MenuItem onClick={handleAnalyticsMenuClose}>Monthly</MenuItem>
-              <MenuItem onClick={handleAnalyticsMenuClose}>Yearly</MenuItem>
+              <MenuItem onClick={handleAnalyticsMenuClose}>Tuần này</MenuItem>
+              <MenuItem onClick={handleAnalyticsMenuClose}>Tháng này</MenuItem>
+              <MenuItem onClick={handleAnalyticsMenuClose}>Năm nay</MenuItem>
             </Menu>
           </Grid>
         </Grid>
         <MainCard sx={{ mt: 2 }} content={false}>
           <List sx={{ p: 0, '& .MuiListItemButton-root': { py: 2 } }}>
             <ListItemButton divider>
-              <ListItemText primary="Company Finance Growth" />
-              <Typography variant="h5">+45.14%</Typography>
+              <ListItemText primary="Tăng trưởng doanh thu" />
+              <Typography variant="h5" color="primary">+45.14%</Typography>
             </ListItemButton>
             <ListItemButton divider>
-              <ListItemText primary="Company Expenses Ratio" />
-              <Typography variant="h5">0.58%</Typography>
+              <ListItemText primary="Tỉ lệ chi phí" />
+              <Typography variant="h5">12.58%</Typography>
             </ListItemButton>
             <ListItemButton>
-              <ListItemText primary="Business Risk Cases" />
-              <Typography variant="h5">Low</Typography>
+              <ListItemText primary="Tỉ lệ hoàn hàng" />
+              <Typography variant="h5" color="error">Thấp</Typography>
             </ListItemButton>
           </List>
           <ReportAreaChart />
         </MainCard>
       </Grid>
+
       {/* row 4 */}
       <Grid size={{ xs: 12, md: 7, lg: 8 }}>
         <SaleReportCard />
@@ -194,7 +284,7 @@ export default function DashboardDefault() {
       <Grid size={{ xs: 12, md: 5, lg: 4 }}>
         <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
           <Grid>
-            <Typography variant="h5">Transaction History</Typography>
+            <Typography variant="h5">Giao Dịch Gần Đây</Typography>
           </Grid>
           <Grid />
         </Grid>
@@ -218,10 +308,10 @@ export default function DashboardDefault() {
               secondaryAction={
                 <Stack sx={{ alignItems: 'flex-end' }}>
                   <Typography variant="subtitle1" noWrap>
-                    + $1,430
+                    + 1,430,000 ₫
                   </Typography>
                   <Typography variant="h6" color="secondary" noWrap>
-                    78%
+                    Thành công
                   </Typography>
                 </Stack>
               }
@@ -231,7 +321,7 @@ export default function DashboardDefault() {
                   <GiftOutlined />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText primary={<Typography variant="subtitle1">Order #002434</Typography>} secondary="Today, 2:00 AM" />
+              <ListItemText primary={<Typography variant="subtitle1">Đơn hàng #002434</Typography>} secondary="Hôm nay, 2:00 PM" />
             </ListItem>
             <ListItem
               component={ListItemButton}
@@ -239,10 +329,10 @@ export default function DashboardDefault() {
               secondaryAction={
                 <Stack sx={{ alignItems: 'flex-end' }}>
                   <Typography variant="subtitle1" noWrap>
-                    + $302
+                    + 302,000 ₫
                   </Typography>
                   <Typography variant="h6" color="secondary" noWrap>
-                    8%
+                    Thành công
                   </Typography>
                 </Stack>
               }
@@ -252,17 +342,17 @@ export default function DashboardDefault() {
                   <MessageOutlined />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText primary={<Typography variant="subtitle1">Order #984947</Typography>} secondary="5 August, 1:45 PM" />
+              <ListItemText primary={<Typography variant="subtitle1">Đơn hàng #984947</Typography>} secondary="5 Tháng 8, 1:45 PM" />
             </ListItem>
             <ListItem
               component={ListItemButton}
               secondaryAction={
                 <Stack sx={{ alignItems: 'flex-end' }}>
                   <Typography variant="subtitle1" noWrap>
-                    + $682
+                    - 682,000 ₫
                   </Typography>
-                  <Typography variant="h6" color="secondary" noWrap>
-                    16%
+                  <Typography variant="h6" color="error" noWrap>
+                    Hoàn tiền
                   </Typography>
                 </Stack>
               }
@@ -272,7 +362,7 @@ export default function DashboardDefault() {
                   <SettingOutlined />
                 </Avatar>
               </ListItemAvatar>
-              <ListItemText primary={<Typography variant="subtitle1">Order #988784</Typography>} secondary="7 hours ago" />
+              <ListItemText primary={<Typography variant="subtitle1">Đơn hàng #988784</Typography>} secondary="7 giờ trước" />
             </ListItem>
           </List>
         </MainCard>
@@ -282,10 +372,10 @@ export default function DashboardDefault() {
               <Grid>
                 <Stack>
                   <Typography variant="h5" noWrap>
-                    Help & Support Chat
+                    Hỗ Trợ Khách Hàng
                   </Typography>
                   <Typography variant="caption" color="secondary" noWrap>
-                    Typical replay within 5 min
+                    Phản hồi trong vòng 5 phút
                   </Typography>
                 </Stack>
               </Grid>
@@ -299,7 +389,7 @@ export default function DashboardDefault() {
               </Grid>
             </Grid>
             <Button size="small" variant="contained" sx={{ textTransform: 'capitalize' }}>
-              Need Help?
+              Trung Tâm Hỗ Trợ
             </Button>
           </Stack>
         </MainCard>

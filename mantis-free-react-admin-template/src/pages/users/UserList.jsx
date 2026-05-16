@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { EditOutlined, DeleteOutlined, UserOutlined, PlusOutlined } from '@ant-design/icons';
 import MainCard from 'components/MainCard';
+import { API_URL } from 'config';
 
 export default function UserList() {
     const [users, setUsers] = useState([]);
@@ -20,7 +21,7 @@ export default function UserList() {
     const fetchUsers = () => {
         const timestamp = new Date().getTime();
         // ĐÃ SỬA: Dùng nháy ngược (`) và đường dẫn /api/accounts/users
-        fetch(`http://127.0.0.1:8900/api/accounts/users?t=${timestamp}`)
+        fetch(`${API_URL}/api/accounts/users?t=${timestamp}`)
             .then(res => res.json())
             .then(data => {
                 let actualData = [];
@@ -77,8 +78,8 @@ export default function UserList() {
         try {
             // ĐÃ SỬA: Dùng nháy ngược (`) và đường dẫn chuẩn
             const url = editMode 
-                ? `http://127.0.0.1:8900/api/accounts/users/${formData.id}` 
-                : `http://127.0.0.1:8900/api/accounts/users`;              
+                ? `${API_URL}/api/accounts/users/${formData.id}` 
+                : `${API_URL}/api/accounts/users`;              
                 
             const method = editMode ? 'PUT' : 'POST';
 
@@ -120,7 +121,7 @@ export default function UserList() {
         if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) return;
         try {
             // ĐÃ SỬA: Dùng nháy ngược (`) và đường dẫn chuẩn
-            const res = await fetch(`http://127.0.0.1:8900/api/accounts/users/${id}`, {
+            const res = await fetch(`${API_URL}/api/accounts/users/${id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {

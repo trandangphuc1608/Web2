@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import MainCard from 'components/MainCard';
+import { API_URL } from 'config';
 
 export default function ProductList() {
     const [products, setProducts] = useState([]);
@@ -15,7 +16,7 @@ export default function ProductList() {
     const fetchProducts = () => {
         const timestamp = new Date().getTime();
         // SỬA LOCALHOST THÀNH 127.0.0.1
-        fetch(`http://127.0.0.1:8900/api/catalog/products?t=${timestamp}`)
+        fetch(`${API_URL}/api/catalog/products?t=${timestamp}`)
             .then((response) => response.json())
             .then((data) => {
                 let actualData = [];
@@ -47,7 +48,7 @@ export default function ProductList() {
         if (!window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
         try {
             // SỬA LOCALHOST THÀNH 127.0.0.1
-            const res = await fetch(`http://127.0.0.1:8900/api/catalog/admin/products/${id}`, {
+            const res = await fetch(`${API_URL}/api/catalog/admin/products/${id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {
@@ -67,7 +68,7 @@ export default function ProductList() {
         const cleanPath = url.startsWith('/') ? url.substring(1) : url;
         const finalPath = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
         // SỬA LOCALHOST THÀNH 127.0.0.1
-        return `http://127.0.0.1:8900/api/catalog/${finalPath}`;
+        return `${API_URL}/api/catalog/${finalPath}`;
     };
 
     if (loading) {

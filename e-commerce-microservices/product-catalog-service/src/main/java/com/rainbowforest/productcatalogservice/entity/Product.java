@@ -14,7 +14,7 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "product_name")
+    @Column(name = "product_name", columnDefinition = "nvarchar(255)")
     @NotNull
     private String productName;
 
@@ -22,10 +22,10 @@ public class Product {
     @NotNull
     private BigDecimal price;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "nvarchar(MAX)")
     private String description;
 
-    @Column(name = "category")
+    @Column(name = "category", columnDefinition = "nvarchar(255)")
     @NotNull
     private String category;
 
@@ -35,7 +35,7 @@ public class Product {
 
     @Column(name = "image_url")
     private String imageUrl;
-
+    
     public Product() {}
 
     // ===== GETTERS / SETTERS =====

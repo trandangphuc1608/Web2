@@ -10,14 +10,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-// ĐÃ XÓA: @CrossOrigin - Để Gateway tự lo liệu CORS
 @RestController
 public class UserController {
 
     @Autowired
     private UserService userService;
-
-    // ĐÃ XÓA: HeaderGenerator để tránh rác Header và xung đột CORS
 
     // ================= API ĐĂNG KÝ & ĐĂNG NHẬP =================
 

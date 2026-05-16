@@ -5,32 +5,37 @@ import MainCard from 'components/MainCard';
 
 export default function EditProduct() {
     const navigate = useNavigate();
-    const { id } = useParams(); // Lấy ID sản phẩm từ URL
+    const { id } = useParams(); 
     
     const [formData, setFormData] = useState({
         id: '',
         productName: '',
-        category: 'Thức ăn nhanh',
+        category: '',
         price: '',
         availability: '',
-        imageUrl: ''
+        imageUrl: '',
+        description: '' 
     });
+    const [categories, setCategories] = useState([]);
     const [imageFile, setImageFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Tải dữ liệu sản phẩm cũ lên Form
     useEffect(() => {
-        fetch(`http://localhost:8900/api/catalog/products/${id}`)
-            .then(res => res.json())
-            .then(data => {
+        const fetchProduct = fetch(`http://localhost:8900/api/catalog/products/${id}`).then(res => res.json());
+        const fetchCategories = fetch(`http://localhost:8900/api/catalog/admin/categories`).then(res => res.json());
+
+        Promise.all([fetchProduct, fetchCategories])
+            .then(([productData, categoryData]) => {
+                setCategories(Array.isArray(categoryData) ? categoryData : []);
                 setFormData({
-                    id: data.id,
-                    productName: data.productName,
-                    category: data.category || 'Thức ăn nhanh',
-                    price: data.price,
-                    availability: data.availability,
-                    imageUrl: data.imageUrl
+                    id: productData.id,
+                    productName: productData.productName,
+                    category: productData.category || '',
+                    price: productData.price,
+                    availability: productData.availability,
+                    imageUrl: productData.imageUrl,
+                    description: productData.description || '' 
                 });
                 setLoading(false);
             })
@@ -46,27 +51,34 @@ export default function EditProduct() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // CHẶN LOGIC: Không cho phép submit nếu giá trị < 0
+        if (parseFloat(formData.price) < 0) {
+            return alert("Đơn giá không được là số âm!");
+        }
+        if (parseInt(formData.availability, 10) < 0) {
+            return alert("Số lượng trong kho không được là số âm!");
+        }
+
         setIsSubmitting(true);
 
         try {
-            // 1. Cập nhật thông tin text (Truyền thêm ID để Backend hiểu là lệnh Update)
             const productRes = await fetch('http://localhost:8900/api/catalog/admin/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    id: formData.id, // Bắt buộc phải có ID để ghi đè
+                    id: formData.id, 
                     productName: formData.productName,
                     category: formData.category,
                     price: parseFloat(formData.price),
                     availability: parseInt(formData.availability, 10),
-                    discription: 'Đa cap nhat',
-                    imageUrl: formData.imageUrl // Giữ nguyên ảnh cũ nếu không đổi
+                    description: formData.description, 
+                    imageUrl: formData.imageUrl 
                 })
             });
 
             if (!productRes.ok) throw new Error('Không thể cập nhật thông tin!');
             
-            // 2. Nếu có chọn file ảnh mới thì gọi API Upload ảnh ghi đè
             if (imageFile) {
                 const imgData = new FormData();
                 imgData.append('file', imageFile);
@@ -102,25 +114,60 @@ export default function EditProduct() {
                     <Grid item xs={12} md={6}>
                         <Stack spacing={1}>
                             <InputLabel>Danh mục</InputLabel>
-                            <Select name="category" value={formData.category} onChange={handleChange} fullWidth>
-                                <MenuItem value="Thức ăn nhanh">Thức ăn nhanh</MenuItem>
-                                <MenuItem value="Đồ uống">Đồ uống</MenuItem>
-                                <MenuItem value="Tráng miệng">Tráng miệng</MenuItem>
+                            <Select name="category" value={formData.category} onChange={handleChange} fullWidth displayEmpty required>
+                                <MenuItem value="" disabled>-- Chọn danh mục --</MenuItem>
+                                {categories.map((cat) => (
+                                    <MenuItem key={cat.id} value={cat.name}>{cat.name}</MenuItem>
+                                ))}
                             </Select>
                         </Stack>
                     </Grid>
                     <Grid item xs={12} md={6}>
                         <Stack spacing={1}>
                             <InputLabel>Đơn giá (VNĐ)</InputLabel>
-                            <OutlinedInput type="number" name="price" value={formData.price} onChange={handleChange} required fullWidth />
+                            {/* THÊM RÀNG BUỘC MIN = 0 */}
+                            <OutlinedInput 
+                                type="number" 
+                                name="price" 
+                                value={formData.price} 
+                                onChange={handleChange} 
+                                required 
+                                fullWidth 
+                                inputProps={{ min: 0 }}
+                            />
                         </Stack>
                     </Grid>
                     <Grid item xs={12} md={6}>
                         <Stack spacing={1}>
                             <InputLabel>Số lượng trong kho</InputLabel>
-                            <OutlinedInput type="number" name="availability" value={formData.availability} onChange={handleChange} required fullWidth />
+                            {/* THÊM RÀNG BUỘC MIN = 0 */}
+                            <OutlinedInput 
+                                type="number" 
+                                name="availability" 
+                                value={formData.availability} 
+                                onChange={handleChange} 
+                                required 
+                                fullWidth 
+                                inputProps={{ min: 0 }}
+                            />
                         </Stack>
                     </Grid>
+                    
+                    <Grid item xs={12}>
+                        <Stack spacing={1}>
+                            <InputLabel>Mô tả chi tiết</InputLabel>
+                            <OutlinedInput 
+                                name="description" 
+                                value={formData.description} 
+                                onChange={handleChange} 
+                                fullWidth 
+                                multiline 
+                                rows={4} 
+                                placeholder="Nhập mô tả sản phẩm..."
+                            />
+                        </Stack>
+                    </Grid>
+
                     <Grid item xs={12}>
                         <Stack spacing={1}>
                             <InputLabel>Hình ảnh sản phẩm (Chỉ chọn nếu muốn đổi ảnh khác)</InputLabel>

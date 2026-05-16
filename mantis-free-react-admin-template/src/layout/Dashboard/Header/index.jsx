@@ -9,9 +9,8 @@ import Toolbar from '@mui/material/Toolbar';
 import AppBarStyled from './AppBarStyled';
 import HeaderContent from './HeaderContent';
 import IconButton from 'components/@extended/IconButton';
-
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
-import { DRAWER_WIDTH, MINI_DRAWER_WIDTH } from 'config';
+import { DRAWER_WIDTH } from 'config'; // ĐÃ XÓA MINI_DRAWER_WIDTH Ở ĐÂY ĐỂ TRÁNH LỖI
 
 // assets
 import MenuFoldOutlined from '@ant-design/icons/MenuFoldOutlined';
@@ -21,7 +20,6 @@ import MenuUnfoldOutlined from '@ant-design/icons/MenuUnfoldOutlined';
 
 export default function Header() {
   const downLG = useMediaQuery((theme) => theme.breakpoints.down('lg'));
-
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
 
@@ -58,7 +56,8 @@ export default function Header() {
       borderBottom: '1px solid',
       borderBottomColor: 'divider',
       zIndex: 1200,
-      width: { xs: '100%', lg: drawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : `calc(100% - ${MINI_DRAWER_WIDTH}px)` }
+      // ĐÃ SỬA: Thay thế bằng số 60px trực tiếp luôn cho khỏe!
+      width: { xs: '100%', lg: drawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : `calc(100% - 60px)` }
     }
   };
 

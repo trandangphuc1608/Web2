@@ -3,6 +3,7 @@ package com.rainbowforest.orderservice.controller;
 import com.rainbowforest.orderservice.config.VnPayConfig;
 import com.rainbowforest.orderservice.domain.Order;
 import com.rainbowforest.orderservice.service.OrderService;
+import org.springframework.web.servlet.view.RedirectView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -44,7 +45,7 @@ public class PaymentController {
         }
 
         BigDecimal total = order.getTotal() != null ? order.getTotal() : BigDecimal.ZERO;
-        long amount = total.multiply(new BigDecimal("24000")).multiply(new BigDecimal("100")).longValue();
+        long amount = total.multiply(new BigDecimal("100")).longValue();
 
         // ÉP CỨNG SỐ TIỀN: Nếu đơn hàng tính ra bằng 0 hoặc dưới 5,000đ -> Tự động đổi thành 10,000đ (1,000,000 format VNPay) để test cho dễ.
         if(amount < 500000) { 
@@ -106,9 +107,9 @@ public class PaymentController {
         return ResponseEntity.ok(paymentUrl);
     }
 
-    // 2. API Nhận kết quả trả về từ VNPay
+    // 2. API Nhận kết quả trả về từ VNPay (Đã xóa hàm cũ, giữ lại hàm dùng RedirectView)
     @GetMapping("/vnpay-return")
-    public ResponseEntity<?> paymentReturn(HttpServletRequest request, @RequestParam("orderId") Long orderId) {
+    public RedirectView paymentReturn(HttpServletRequest request, @RequestParam("orderId") Long orderId) {
         String vnp_ResponseCode = request.getParameter("vnp_ResponseCode");
         Order order = orderService.getOrderById(orderId);
 
@@ -117,13 +118,17 @@ public class PaymentController {
                 // Thanh toán thành công -> Đổi status
                 order.setStatus("PAID");
                 orderService.saveOrder(order);
-                return ResponseEntity.ok("Thanh toán thành công cho đơn hàng: " + orderId);
+                
+                // ĐÁ NGƯỜI DÙNG VỀ LẠI REACT APP (Kèm cờ thành công)
+                return new RedirectView("http://localhost:3000/cart?payment=success");
             } else {
                 order.setStatus("PAYMENT_FAILED");
                 orderService.saveOrder(order);
-                return ResponseEntity.badRequest().body("Thanh toán thất bại hoặc bị hủy!");
+                
+                // ĐÁ NGƯỜI DÙNG VỀ LẠI REACT APP (Kèm cờ thất bại)
+                return new RedirectView("http://localhost:3000/cart?payment=failed");
             }
         }
-        return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng!");
+        return new RedirectView("http://localhost:3000/cart?payment=error");
     }
 }

@@ -1,10 +1,10 @@
-// assets - BỔ SUNG ĐẦY ĐỦ IMPORT ICON Ở ĐÂY
 import { 
     DashboardOutlined, 
     AppstoreAddOutlined, 
     UserOutlined, 
     ShoppingCartOutlined, 
-    DollarOutlined 
+    DollarOutlined,
+    CommentOutlined
 } from '@ant-design/icons';
 
 // icons
@@ -13,7 +13,8 @@ const icons = {
     AppstoreAddOutlined,
     UserOutlined,
     ShoppingCartOutlined,
-    DollarOutlined
+    DollarOutlined,
+    CommentOutlined
 };
 
 // ==============================|| MENU ITEMS - DASHBOARD ||============================== //
@@ -62,7 +63,15 @@ const dashboard = {
             url: '/admin/payments',
             icon: icons.DollarOutlined, 
             breadcrumbs: false
-        }
+        },
+        {
+            id: 'reviews',
+            title: 'Đánh giá',
+            type: 'item',
+            url: '/admin/reviews',
+            icon: icons.CommentOutlined,
+            breadcrumbs: false
+        },
     ]
 };
 

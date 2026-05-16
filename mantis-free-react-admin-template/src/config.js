@@ -24,3 +24,4 @@ export const githubColor = '#24292e';
 
 // Đường dẫn mặc định khi hệ thống load lên
 export const APP_DEFAULT_PATH = '/dashboard/default';
+export const API_URL = 'http://127.0.0.1:8900';

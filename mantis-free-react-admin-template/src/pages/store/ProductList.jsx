@@ -1,24 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom'; 
 import { 
-    Grid, Card, CardMedia, CardContent, CardActions, 
+    Card, CardMedia, CardContent, CardActions, 
     Typography, Button, CircularProgress, Box, Chip, 
     TextField, InputAdornment 
 } from '@mui/material';
 import { ShoppingCartOutlined, SearchOutlined } from '@ant-design/icons';
 import MainCard from 'components/MainCard';
+import { API_URL } from 'config';
 
 export default function ProductList() {
     const [products, setProducts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('Tất cả'); // State lưu danh mục đang chọn
     const [loading, setLoading] = useState(true);
 
+    // Tông màu chủ đạo của RainbowFood
+    const primaryColor = '#ff4d4f'; 
+    const hoverColor = '#d9363e';
+
     useEffect(() => {
-        // ĐÃ SỬA: Dùng 127.0.0.1 để tránh lỗi ERR_CONNECTION_REFUSED
-        fetch(`http://127.0.0.1:8900/api/catalog/products?t=${new Date().getTime()}`)
+        fetch(`${API_URL}/api/catalog/products?t=${new Date().getTime()}`)
             .then(res => res.json())
             .then(data => {
-                // ĐÃ SỬA: Bọc thép dữ liệu để tránh lỗi API trả về mảng bọc ngoài
                 let actualData = [];
                 if (Array.isArray(data)) actualData = data;
                 else if (data && Array.isArray(data.data)) actualData = data.data;
@@ -52,19 +56,38 @@ export default function ProductList() {
 
         const cleanPath = url.startsWith('/') ? url.substring(1) : url;
         const finalPath = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
-        // ĐÃ SỬA: Dùng 127.0.0.1
-        return `http://127.0.0.1:8900/api/catalog/${finalPath}`;
+        return `${API_URL}/api/catalog/${finalPath}`;
     };
 
+    // Tự động trích xuất danh sách các Category độc nhất từ Products
+    const categories = useMemo(() => {
+        const allCategories = products.map(p => {
+            if (typeof p.category === 'string') return p.category;
+            if (p.category && p.category.name) return p.category.name;
+            return 'Khác';
+        });
+        // Lấy các giá trị độc nhất và thêm chữ "Tất cả" lên đầu
+        return ['Tất cả', ...new Set(allCategories.filter(Boolean))];
+    }, [products]);
+
+    // Lọc sản phẩm theo Tên (Search) VÀ Danh mục (Category)
     const filteredProducts = products.filter(product => {
         const name = product.productName || product.name || '';
-        return name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        let catName = 'Khác';
+        if (typeof product.category === 'string') catName = product.category;
+        else if (product.category && product.category.name) catName = product.category.name;
+
+        const matchesCategory = selectedCategory === 'Tất cả' || catName === selectedCategory;
+
+        return matchesSearch && matchesCategory;
     });
 
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                <CircularProgress />
+                <CircularProgress sx={{ color: primaryColor }} />
             </Box>
         );
     }
@@ -74,8 +97,44 @@ export default function ProductList() {
             title="Thực đơn của chúng tôi"
             contentSX={{ p: 2 }}   
         >
-            {/* Search */}
-            <Box sx={{ mb: 1.5, display: 'flex', justifyContent: 'flex-end' }}>
+            {/* THÀNH PHẦN ĐIỀU HƯỚNG: LỌC DANH MỤC & TÌM KIẾM */}
+            <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2 }}>
+                
+                {/* Dải nút Lọc Danh Mục */}
+                <Box 
+                    sx={{ 
+                        display: 'flex', 
+                        gap: 1, 
+                        overflowX: 'auto', 
+                        pb: 0.5,
+                        '&::-webkit-scrollbar': { height: '6px' },
+                        '&::-webkit-scrollbar-thumb': { bgcolor: '#e0e0e0', borderRadius: '4px' }
+                    }}
+                >
+                    {categories.map((cat, index) => (
+                        <Chip
+                            key={index}
+                            label={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            sx={{
+                                fontWeight: selectedCategory === cat ? 700 : 500,
+                                bgcolor: selectedCategory === cat ? primaryColor : '#f5f5f5',
+                                color: selectedCategory === cat ? '#fff' : 'text.primary',
+                                border: '1px solid',
+                                borderColor: selectedCategory === cat ? primaryColor : '#e0e0e0',
+                                '&:hover': { 
+                                    bgcolor: selectedCategory === cat ? hoverColor : '#ffeae9',
+                                    color: selectedCategory === cat ? '#fff' : primaryColor,
+                                    borderColor: selectedCategory === cat ? hoverColor : primaryColor
+                                },
+                                transition: 'all 0.2s ease',
+                                px: 1
+                            }}
+                        />
+                    ))}
+                </Box>
+
+                {/* Thanh Tìm Kiếm */}
                 <TextField 
                     variant="outlined" 
                     placeholder="Tìm món ăn..." 
@@ -89,22 +148,33 @@ export default function ProductList() {
                             </InputAdornment>
                         )
                     }}
-                    sx={{ width: { xs: '100%', sm: '260px' } }}
+                    sx={{ width: { xs: '100%', md: '280px' }, flexShrink: 0 }}
                 />
             </Box>
 
+            {/* LƯỚI SẢN PHẨM (Đã dọn dẹp các mảng Grid lồng nhau thừa thãi) */}
             {filteredProducts.length === 0 ? (
-                <Typography variant="h6" align="center" sx={{ py: 5 }}>
+                <Typography variant="h6" align="center" sx={{ py: 8, color: 'text.secondary' }}>
                     Không tìm thấy món ăn nào phù hợp!
                 </Typography>
             ) : (
-                <Grid container spacing={1.5}> 
+                <Box 
+                    sx={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: { 
+                            xs: 'repeat(1, 1fr)', // Điện thoại: 1 món / dòng
+                            sm: 'repeat(2, 1fr)', // Tablet dọc: 2 món / dòng
+                            md: 'repeat(3, 1fr)', // Tablet ngang: 3 món / dòng
+                            lg: 'repeat(4, 1fr)'  // Màn hình máy tính: BẮT BUỘC 4 món / dòng
+                        }, 
+                        gap: 3 
+                    }}
+                > 
                     {filteredProducts.map((product) => {
                         const productId = product.id || product.productId;
 
                         return (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={productId} sx={{ display: 'flex' }}>
-                                
+                            <Box key={productId} sx={{ display: 'flex', width: '100%' }}>
                                 <Card 
                                     sx={{ 
                                         display: 'flex',
@@ -112,10 +182,16 @@ export default function ProductList() {
                                         width: '100%',
                                         height: '100%',
                                         borderRadius: 2,
-                                        transition: '0.2s',
+                                        transition: 'all 0.3s ease',
+                                        border: '1px solid #f0f0f0',
+                                        boxShadow: 'none',
                                         '&:hover': { 
-                                            transform: 'translateY(-3px)', 
-                                            boxShadow: 3 
+                                            transform: 'translateY(-5px)', 
+                                            boxShadow: '0 8px 24px rgba(255, 77, 79, 0.15)',
+                                            borderColor: '#ffa39e'
+                                        },
+                                        '&:hover .MuiCardMedia-root': {
+                                            transform: 'scale(1.08)'
                                         }
                                     }}
                                 >
@@ -130,39 +206,45 @@ export default function ProductList() {
                                             flexGrow: 1
                                         }}
                                     >
-                                        <CardMedia 
-                                            component="img"
-                                            image={getValidImage(product.imageUrl || product.image || product.picture)}
-                                            alt={product.productName || product.name}
-                                            onError={(e) => { 
-                                                e.target.onerror = null; 
-                                                e.target.src = 'https://placehold.co/400x300?text=Loi+Anh'; 
-                                            }}
-                                            sx={{ 
-                                                width: '100%',
-                                                aspectRatio: '4 / 3',
-                                                maxHeight: 195,
-                                                objectFit: 'cover'
-                                            }}
-                                        />
+                                        <Box sx={{ overflow: 'hidden', width: '100%', aspectRatio: '4 / 3', maxHeight: 200 }}>
+                                            <CardMedia 
+                                                component="img"
+                                                image={getValidImage(product.imageUrl || product.image || product.picture)}
+                                                alt={product.productName || product.name}
+                                                onError={(e) => { 
+                                                    e.target.onerror = null; 
+                                                    e.target.src = 'https://placehold.co/400x300?text=Loi+Anh'; 
+                                                }}
+                                                sx={{ 
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'cover',
+                                                    transition: 'transform 0.5s ease' 
+                                                }}
+                                            />
+                                        </Box>
 
                                         <CardContent 
                                             sx={{ 
                                                 flexGrow: 1,
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                p: 1.5  
+                                                p: 2,
+                                                pb: 1
                                             }}
                                         >
                                             <Typography 
-                                                variant="subtitle1"
+                                                variant="subtitle2"
                                                 sx={{ 
-                                                    fontWeight: 600,
+                                                    fontWeight: 700,
                                                     mb: 0.5,
                                                     display: '-webkit-box',
                                                     WebkitLineClamp: 2,
                                                     WebkitBoxOrient: 'vertical',
-                                                    overflow: 'hidden'
+                                                    overflow: 'hidden',
+                                                    height: '2.6rem', // Ép chiều cao tiêu đề 2 dòng
+                                                    color: '#262626',
+                                                    fontSize: '0.95rem'
                                                 }}
                                             >
                                                 {product.productName || product.name}
@@ -172,44 +254,59 @@ export default function ProductList() {
                                                 variant="body2" 
                                                 color="text.secondary"
                                                 sx={{ 
-                                                    mb: 1,
+                                                    mb: 2,
                                                     display: '-webkit-box',
                                                     WebkitLineClamp: 2,
                                                     WebkitBoxOrient: 'vertical',
                                                     overflow: 'hidden'
                                                 }}
                                             >
-                                                {product.description || 'Ngon tuyệt hảo!'}
+                                                Món ăn nóng hổi, giòn rụm, giao hàng tận nơi trong 30 phút!
                                             </Typography>
 
                                             <Box sx={{ mt: 'auto' }}>
                                                 <Chip 
                                                     label={`${(product.price || 0).toLocaleString('vi-VN')} ₫`}
-                                                    color="primary"
-                                                    size="small"
-                                                    sx={{ fontWeight: 'bold' }}
+                                                    size="medium"
+                                                    sx={{ 
+                                                        fontWeight: 800, 
+                                                        bgcolor: '#fff1f0', 
+                                                        color: primaryColor,
+                                                        border: `1px solid ${primaryColor}`,
+                                                        fontSize: '0.95rem'
+                                                    }}
                                                 />
                                             </Box>
                                         </CardContent>
                                     </Box>
 
-                                    <CardActions sx={{ p: 1.5, pt: 0 }}>
+                                    <CardActions sx={{ p: 2, pt: 0 }}>
                                         <Button 
                                             variant="contained"
                                             fullWidth
-                                            size="small"
+                                            size="large"
                                             startIcon={<ShoppingCartOutlined />}
                                             onClick={() => handleAddToCart(product)}
+                                            sx={{
+                                                bgcolor: primaryColor,
+                                                fontWeight: 600,
+                                                textTransform: 'none',
+                                                fontSize: '0.95rem',
+                                                boxShadow: '0 4px 14px 0 rgba(255, 77, 79, 0.39)',
+                                                '&:hover': {
+                                                    bgcolor: hoverColor,
+                                                    boxShadow: '0 6px 20px rgba(255, 77, 79, 0.23)'
+                                                }
+                                            }}
                                         >
                                             Thêm vào giỏ
                                         </Button>
                                     </CardActions>
                                 </Card>
-
-                            </Grid>
+                            </Box>
                         );
                     })}
-                </Grid>
+                </Box>
             )}
         </MainCard>
     );

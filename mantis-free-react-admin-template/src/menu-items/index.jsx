@@ -3,7 +3,8 @@ import {
     AppstoreAddOutlined, 
     UserOutlined, 
     ShoppingCartOutlined, 
-    DollarOutlined 
+    DollarOutlined,
+    CommentOutlined
 } from '@ant-design/icons';
 
 const management = {
@@ -15,7 +16,7 @@ const management = {
             id: 'dashboard',
             title: 'Dashboard',
             type: 'item',
-            url: '/',
+            url: '/admin',
             icon: DashboardOutlined,
             breadcrumbs: false
         },
@@ -27,6 +28,12 @@ const management = {
             icon: AppstoreAddOutlined,
             breadcrumbs: false
         },
+        {
+            id: 'categories',
+            title: 'Danh mục',
+            type: 'item',
+            url: '/admin/categories',
+            icon: AppstoreAddOutlined },
         {
             id: 'users',
             title: 'Người dùng',
@@ -50,12 +57,20 @@ const management = {
             url: '/admin/payments',
             icon: DollarOutlined,
             breadcrumbs: false
+        },
+        {
+            id: 'reviews',
+            title: 'Đánh giá',
+            type: 'item',
+            url: '/admin/reviews',
+            icon: CommentOutlined,
+            breadcrumbs: false
         }
     ]
 };
 
 const menuItems = {
-    items: [management] // Bỏ hẳn nhóm dashboard cũ
+    items: [management]
 };
 
 export default menuItems;

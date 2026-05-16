@@ -27,7 +27,7 @@ public class Order {
     @Column(name = "total")
     private BigDecimal total;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "cart",
         joinColumns = @JoinColumn(name = "order_id"),

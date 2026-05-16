@@ -32,7 +32,7 @@ export default function AddProduct() {
                     category: formData.category,
                     price: parseFloat(formData.price),
                     availability: parseInt(formData.availability, 10),
-                    discription: 'Sản phẩm mới' 
+                    description: 'Sản phẩm mới' 
                 })
             });
 
