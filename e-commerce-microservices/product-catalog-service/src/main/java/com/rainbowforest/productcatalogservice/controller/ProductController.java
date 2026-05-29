@@ -56,6 +56,13 @@ public class ProductController {
     public ResponseEntity<Product> addProduct(@RequestBody Product product, HttpServletRequest request) {
         if (product != null) {
             try {
+                // --- ĐÃ THÊM LOGIC XỬ LÝ TRẠNG THÁI (NHÁP / ĐĂNG) ---
+                // Nếu React không gửi lên (hoặc bị null), mặc định là PUBLISHED để an toàn hiển
+                // thị
+                if (product.getVisibilityStatus() == null || product.getVisibilityStatus().isEmpty()) {
+                    product.setVisibilityStatus("PUBLISHED");
+                }
+
                 Product savedProduct = productService.addProduct(product);
                 return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
             } catch (Exception e) {
@@ -64,5 +71,24 @@ public class ProductController {
             }
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+    }
+
+    @PutMapping(value = "/products/{id}/increment-sold")
+    public ResponseEntity<Void> incrementSoldCount(
+            @PathVariable("id") Long id,
+            @RequestParam("qty") int quantity) {
+
+        productService.updateSoldCount(id, quantity);
+        return ResponseEntity.ok().build();
+    }
+
+    // Thêm API này để Recommendation Service gọi sang cập nhật sao
+    @PutMapping(value = "/products/{id}/update-rating")
+    public ResponseEntity<Void> updateProductRating(
+            @PathVariable("id") Long id,
+            @RequestParam("rating") Float rating) {
+
+        productService.updateAverageRating(id, rating);
+        return ResponseEntity.ok().build();
     }
 }

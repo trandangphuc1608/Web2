@@ -1,6 +1,12 @@
 @echo off
 echo Dang khoi dong he thong Microservices...
 
+:: ---------------------------------------------------------
+:: KHAI BÁO BIẾN MÔI TRƯỜNG (ENVIRONMENT VARIABLE) TẠI ĐÂY
+:: Cú pháp: set TÊN_BIẾN=GIÁ_TRỊ
+:: ---------------------------------------------------------
+set GEMINI_API_KEY=AIzaSyCt1pjljwKu8e7LM2VyW7V95OrB0aYJlbY
+
 echo 1. Khoi dong Eureka Server...
 start "Eureka Server" cmd /k "cd eureka-server && .\mvnw spring-boot:run"
 

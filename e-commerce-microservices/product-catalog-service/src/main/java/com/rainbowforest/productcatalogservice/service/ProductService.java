@@ -11,4 +11,6 @@ public interface ProductService {
     public List<Product> getAllProductsByName(String name);
     public Product addProduct(Product product);
     public void deleteProduct(Long productId);
+    public void updateSoldCount(Long productId, int quantity);
+    public void updateAverageRating(Long productId, Float rating);
 }

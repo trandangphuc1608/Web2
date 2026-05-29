@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-    Container, Grid, Typography, Button, Box, Paper, 
+import {
+    Container, Grid, Typography, Button, Box, Paper,
     IconButton, Rating, Divider, Skeleton, Alert, Card, CardMedia, CardContent, CardActions, Chip,
     Tabs, Tab, Avatar, TextField, Select, MenuItem, FormControl
 } from '@mui/material';
-import { 
-    ShoppingCartOutlined, ArrowLeftOutlined, 
+import {
+    ShoppingCartOutlined, ArrowLeftOutlined,
     PlusOutlined, MinusOutlined, FireFilled, LikeOutlined, EditOutlined
 } from '@ant-design/icons';
 
 export default function ProductDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    
+
     const [product, setProduct] = useState(null);
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [reviews, setReviews] = useState([]);
-    
+
     const [quantity, setQuantity] = useState(1);
     const [tabValue, setTabValue] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -30,11 +30,56 @@ export default function ProductDetail() {
     const [filterStar, setFilterStar] = useState(0);
     const [sortBy, setSortBy] = useState("newest");
 
-    const primaryColor = '#ff4d4f'; 
+    // State quản lý việc đăng nhập
+    const [currentUser, setCurrentUser] = useState(null);
+
+    const primaryColor = '#ff4d4f';
     const hoverColor = '#d9363e';
 
-    const user_info = JSON.parse(localStorage.getItem("user_info"));
-    const currentUserName = user_info ? (user_info.userName || user_info.name || user_info.username) : "Khách Hàng";
+    // --- BỘ QUÉT THÔNG MINH (CHỐNG LỖI CHUỖI "null") ---
+    useEffect(() => {
+        const checkAuthStatus = () => {
+            let foundUser = null;
+            const keys = ["user", "user_info", "currentUser", "account", "userInfo", "rainbow_user"];
+
+            for (let key of keys) {
+                const str = localStorage.getItem(key) || sessionStorage.getItem(key);
+                
+                // Bỏ qua nếu giá trị rỗng hoặc mang chữ "null", "undefined"
+                if (str && str !== "null" && str !== "undefined") {
+                    try {
+                        let parsed = JSON.parse(str);
+                        while (typeof parsed === 'string') {
+                            parsed = JSON.parse(parsed);
+                        }
+                        
+                        if (parsed && typeof parsed === 'object') {
+                            // Nếu có id, email, token hoặc role thì chắc chắn 100% là thông tin user
+                            if (parsed.id || parsed.email || parsed.token || parsed.role || key.includes("user")) {
+                                foundUser = parsed.userName || parsed.name || parsed.username || 
+                                           (parsed.user && (parsed.user.userName || parsed.user.name)) || 
+                                           (parsed.data && (parsed.data.userName || parsed.data.name)) || 
+                                           "Khách hàng";
+                                break; // Đã tìm thấy thì thoát vòng lặp
+                            }
+                        }
+                    } catch (e) {
+                        // Bỏ qua lỗi parse của key này, tiếp tục kiểm tra key khác
+                    }
+                }
+            }
+            
+            setCurrentUser(foundUser);
+        };
+
+        checkAuthStatus(); // Quét lần đầu
+        const intervalId = setInterval(checkAuthStatus, 500); // Cứ nửa giây quét lại 1 lần
+        
+        return () => clearInterval(intervalId);
+    }, []);
+
+    const isLoggedIn = currentUser !== null;
+    const currentUserName = currentUser || "Khách hàng";
 
     const getValidImage = (url) => {
         if (!url) return 'https://placehold.co/400x400?text=No+Image';
@@ -60,29 +105,25 @@ export default function ProductDetail() {
         const fetchAll = fetch(`http://localhost:8900/api/catalog/products`).then(res => res.ok ? res.json() : []);
 
         const fetchReviews = fetch(`http://localhost:8900/api/recommendation/products/${id}/reviews`)
-            .then(res => res.ok ? res.json() : []).catch(() => []); 
+            .then(res => res.ok ? res.json() : []).catch(() => []);
 
-        // GỌI API ĐỀ XUẤT TỪ BACKEND
         const fetchRecommendations = fetch(`http://localhost:8900/api/recommendation/products/${id}/recommendations`)
             .then(res => res.ok ? res.json() : []).catch(() => []);
 
         Promise.all([fetchProduct, fetchAll, fetchReviews, fetchRecommendations])
             .then(([prodData, allData, reviewsData, recommendedIds]) => {
                 setProduct(prodData);
-                
+
                 let actualAll = [];
                 if (Array.isArray(allData)) actualAll = allData;
                 else if (allData && Array.isArray(allData.data)) actualAll = allData.data;
                 else if (allData && allData._embedded && Array.isArray(allData._embedded.products)) actualAll = allData._embedded.products;
                 else if (allData && Array.isArray(allData.content)) actualAll = allData.content;
 
-                // LOGIC ĐỀ XUẤT SẢN PHẨM
                 let related = [];
                 if (recommendedIds && recommendedIds.length > 0) {
-                    // Nếu có đề xuất từ Backend (Top Rated)
                     related = actualAll.filter(item => recommendedIds.includes(Number(item.id || item.productId)));
                 } else {
-                    // Fallback: Mặc định đề xuất món cùng danh mục nếu CSDL trống
                     related = actualAll.filter(item => {
                         const itemId = (item.id || item.productId).toString();
                         return itemId !== id && item.category === prodData.category;
@@ -96,7 +137,6 @@ export default function ProductDetail() {
             .finally(() => setLoading(false));
     }, [id]);
 
-    // --- ĐÃ FIX: THÊM LẠI 2 HÀM TĂNG GIẢM SỐ LƯỢNG BỊ THIẾU ---
     const handleDecrease = () => setQuantity(prev => prev > 1 ? prev - 1 : 1);
     const handleIncrease = () => setQuantity(prev => prev < 20 ? prev + 1 : 20);
 
@@ -113,7 +153,7 @@ export default function ProductDetail() {
         else cart.push({ product: customProduct, quantity: customQty });
 
         localStorage.setItem('rainbow_cart', JSON.stringify(cart));
-        window.dispatchEvent(new Event('cartUpdated')); 
+        window.dispatchEvent(new Event('cartUpdated'));
         alert(`Đã thêm ${customQty} phần "${customProduct.productName || customProduct.name}" vào giỏ hàng!`);
     };
 
@@ -129,7 +169,7 @@ export default function ProductDetail() {
             text: reviewText
         };
 
-        const url = editingReviewId 
+        const url = editingReviewId
             ? `http://localhost:8900/api/recommendation/reviews/${editingReviewId}`
             : `http://localhost:8900/api/recommendation/products/${id}/reviews`;
 
@@ -138,46 +178,45 @@ export default function ProductDetail() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         })
-        .then(res => {
-            if (res.ok) return res.json();
-            throw new Error("Lỗi mạng");
-        })
-        .then(data => {
-            if (editingReviewId) {
-                setReviews(reviews.map(r => r.id === editingReviewId ? data : r));
-                alert("Đã cập nhật đánh giá!");
-            } else {
-                setReviews([...reviews, data]);
-                alert("Đã gửi đánh giá thành công!");
-            }
-            setReviewText(""); 
-            setReviewRating(5);
-            setEditingReviewId(null);
-        })
-        .catch(err => {
-            console.error(err);
-            // Fallback offline (Fake UI update)
-            const localReview = editingReviewId 
-                ? { ...payload, id: editingReviewId, date: "Vừa xong", isEdited: true } 
-                : { ...payload, id: Date.now(), date: "Vừa xong" };
-            
-            if (editingReviewId) {
-                setReviews(reviews.map(r => r.id === editingReviewId ? localReview : r));
-            } else {
-                setReviews([...reviews, localReview]);
-            }
-            setReviewText("");
-            setEditingReviewId(null);
-        });
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error("Lỗi mạng");
+            })
+            .then(data => {
+                if (editingReviewId) {
+                    setReviews(reviews.map(r => r.id === editingReviewId ? data : r));
+                    alert("Đã cập nhật đánh giá!");
+                } else {
+                    setReviews([...reviews, data]);
+                    alert("Đã gửi đánh giá thành công!");
+                }
+                setReviewText("");
+                setReviewRating(5);
+                setEditingReviewId(null);
+            })
+            .catch(err => {
+                console.error(err);
+                const localReview = editingReviewId
+                    ? { ...payload, id: editingReviewId, date: "Vừa xong", isEdited: true }
+                    : { ...payload, id: Date.now(), date: "Vừa xong" };
+
+                if (editingReviewId) {
+                    setReviews(reviews.map(r => r.id === editingReviewId ? localReview : r));
+                } else {
+                    setReviews([...reviews, localReview]);
+                }
+                setReviewText("");
+                setEditingReviewId(null);
+            });
     };
 
     const handleHelpfulVote = (reviewId) => {
         fetch(`http://localhost:8900/api/recommendation/reviews/${reviewId}/helpful`, { method: 'PUT' })
-        .then(res => res.json())
-        .then(data => {
-            setReviews(reviews.map(r => r.id === reviewId ? { ...r, helpfulCount: data.helpfulCount } : r));
-        })
-        .catch(() => alert("Lỗi khi vote hữu ích!"));
+            .then(res => res.json())
+            .then(data => {
+                setReviews(reviews.map(r => r.id === reviewId ? { ...r, helpfulCount: data.helpfulCount } : r));
+            })
+            .catch(() => alert("Lỗi khi vote hữu ích!"));
     };
 
     const triggerEditReview = (rev) => {
@@ -187,15 +226,15 @@ export default function ProductDetail() {
         document.getElementById('review-form')?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const avgRating = reviews.length > 0 
-        ? (reviews.reduce((sum, rev) => sum + (rev.rating || 5), 0) / reviews.length).toFixed(1) 
-        : 5.0;
+    const avgRating = reviews.length > 0
+        ? (reviews.reduce((sum, rev) => sum + (rev.rating || 5), 0) / reviews.length).toFixed(1)
+        : 0;
 
     const processedReviews = reviews
         .filter(rev => filterStar === 0 || Math.floor(rev.rating || 5) === filterStar)
         .sort((a, b) => {
             if (sortBy === 'helpful') return (b.helpfulCount || 0) - (a.helpfulCount || 0);
-            return (b.id || Date.now()) - (a.id || Date.now()); // newest
+            return (b.id || Date.now()) - (a.id || Date.now());
         });
 
     if (loading) {
@@ -233,13 +272,23 @@ export default function ProductDetail() {
                     </Grid>
                     <Grid item xs={12} sm={7} sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>{product.productName || product.name}</Typography>
+
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                            <Typography variant="subtitle1" fontWeight="bold" color="#faaf00">{avgRating}</Typography>
-                            <Rating value={parseFloat(avgRating)} precision={0.1} readOnly size="small" sx={{ color: '#faaf00' }}/>
-                            <Typography variant="body2" color="text.secondary">({reviews.length} đánh giá)</Typography>
-                            <Chip icon={<FireFilled style={{ color: '#fff' }}/>} label="Best Seller" size="small" sx={{ bgcolor: '#ff4d4f', color: '#fff', fontWeight: 'bold', ml: 1, border: 'none' }} />
-                            <Chip label={product.category || "Thức ăn"} size="small" sx={{ ml: 1 }} />
+                            {Number(avgRating) > 0 ? (
+                                <>
+                                    <Typography variant="subtitle1" fontWeight="bold" color="#faaf00">{avgRating}</Typography>
+                                    <Rating value={parseFloat(avgRating)} precision={0.1} readOnly size="small" sx={{ color: '#faaf00' }} />
+                                    <Typography variant="body2" color="text.secondary">({reviews.length} đánh giá)</Typography>
+                                </>
+                            ) : (
+                                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', mr: 1 }}>
+                                    Chưa có đánh giá nào
+                                </Typography>
+                            )}
+                            <Chip icon={<FireFilled style={{ color: '#fff' }} />} label="Best Seller" size="small" sx={{ bgcolor: '#ff4d4f', color: '#fff', fontWeight: 'bold', border: 'none' }} />
+                            <Chip label={product.category || "Thức ăn"} size="small" />
                         </Box>
+
                         <Typography variant="h3" sx={{ fontWeight: 900, color: primaryColor, mb: 2 }}>{(product.price || 0).toLocaleString('vi-VN')} ₫</Typography>
                         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>{product.description || 'Món ăn hấp dẫn, giòn rụm và giao nhanh tận nơi trong vòng 30 phút!'}</Typography>
                         <Divider sx={{ mb: 3, width: '100%' }} />
@@ -257,7 +306,6 @@ export default function ProductDetail() {
                 </Grid>
             </Paper>
 
-            {/* TAB MÔ TẢ VÀ ĐÁNH GIÁ */}
             <Box sx={{ mb: 6 }}>
                 <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ mb: 3, borderBottom: '1px solid #f0f0f0' }} TabIndicatorProps={{ style: { backgroundColor: primaryColor } }}>
                     <Tab label="Mô tả món ăn" sx={{ fontWeight: 'bold', fontSize: '1rem', '&.Mui-selected': { color: primaryColor } }} />
@@ -309,7 +357,7 @@ export default function ProductDetail() {
                                                 <Typography variant="caption" color="text.secondary">{rev.date}</Typography>
                                             </Box>
                                             <Typography variant="body2" sx={{ mb: 2 }}>{rev.text || rev.comment}</Typography>
-                                            
+
                                             <Box display="flex" gap={2}>
                                                 <Button size="small" startIcon={<LikeOutlined />} onClick={() => handleHelpfulVote(rev.id)} sx={{ color: 'text.secondary', textTransform: 'none' }}>
                                                     Hữu ích ({rev.helpfulCount || 0})
@@ -325,24 +373,51 @@ export default function ProductDetail() {
                                 </Paper>
                             ))
                         )}
-                        
-                        <Paper id="review-form" elevation={0} sx={{ p: 4, mt: 4, borderRadius: 4, bgcolor: '#f8f9fa' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                                {editingReviewId ? "Chỉnh sửa đánh giá" : "Viết đánh giá của bạn"}
-                            </Typography>
-                            <Rating value={reviewRating} onChange={(e, newValue) => setReviewRating(newValue)} size="large" sx={{ mb: 2 }} />
-                            <TextField fullWidth multiline rows={3} placeholder="Chia sẻ cảm nhận của bạn về món ăn này nhé..." sx={{ mb: 3, bgcolor: '#fff' }} value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
-                            <Box sx={{ display: 'flex', gap: 2 }}>
-                                <Button variant="contained" onClick={submitReviewHandler} sx={{ bgcolor: '#212121', color: '#fff', '&:hover': { bgcolor: '#000' } }}>
-                                    {editingReviewId ? "Cập Nhật" : "Gửi Đánh Giá"}
-                                </Button>
-                                {editingReviewId && (
-                                    <Button variant="outlined" onClick={() => { setEditingReviewId(null); setReviewText(""); setReviewRating(5); }}>
-                                        Hủy
+
+                        {isLoggedIn ? (
+                            <Paper id="review-form" elevation={0} sx={{ p: 4, mt: 4, borderRadius: 4, bgcolor: '#f8f9fa' }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                                    {editingReviewId ? "Chỉnh sửa đánh giá" : "Viết đánh giá của bạn"}
+                                </Typography>
+                                <Rating value={reviewRating} onChange={(e, newValue) => setReviewRating(newValue)} size="large" sx={{ mb: 2 }} />
+                                <TextField fullWidth multiline rows={3} placeholder="Chia sẻ cảm nhận của bạn về món ăn này nhé..." sx={{ mb: 3, bgcolor: '#fff' }} value={reviewText} onChange={(e) => setReviewText(e.target.value)} />
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Button variant="contained" onClick={submitReviewHandler} sx={{ bgcolor: '#212121', color: '#fff', '&:hover': { bgcolor: '#000' } }}>
+                                        {editingReviewId ? "Cập Nhật" : "Gửi Đánh Giá"}
                                     </Button>
-                                )}
-                            </Box>
-                        </Paper>
+                                    {editingReviewId && (
+                                        <Button variant="outlined" onClick={() => { setEditingReviewId(null); setReviewText(""); setReviewRating(5); }}>
+                                            Hủy
+                                        </Button>
+                                    )}
+                                </Box>
+                            </Paper>
+                        ) : (
+                            <Paper elevation={0} sx={{ p: 4, mt: 4, borderRadius: 4, bgcolor: '#fff0f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px dashed #ffa39e' }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, color: primaryColor }}>
+                                    Vui lòng đăng nhập
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+                                    Bạn cần đăng nhập vào hệ thống để chia sẻ cảm nhận về món ăn này.
+                                </Typography>
+                                
+                                <Button 
+                                    variant="contained" 
+                                    onClick={() => {
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        const headerBtn = document.getElementById('login-btn-header');
+                                        if (headerBtn) {
+                                            headerBtn.click();
+                                        } else {
+                                            alert("Vui lòng nhấn nút Đăng Nhập ở menu góc trên cùng bên phải nhé!");
+                                        }
+                                    }} 
+                                    sx={{ bgcolor: primaryColor, color: '#fff', '&:hover': { bgcolor: hoverColor }, textTransform: 'none', px: 4, py: 1, borderRadius: 2 }}
+                                >
+                                    Đăng nhập ngay
+                                </Button>
+                            </Paper>
+                        )}
                     </Box>
                 )}
             </Box>
@@ -350,7 +425,7 @@ export default function ProductDetail() {
             {relatedProducts.length > 0 && (
                 <Box>
                     <Typography variant="h5" sx={{ fontWeight: 800, mb: 3 }}>Có thể bạn sẽ thích</Typography>
-                    <Grid container spacing={2}> 
+                    <Grid container spacing={2}>
                         {relatedProducts.map((item) => {
                             const itemId = item.id || item.productId;
                             return (

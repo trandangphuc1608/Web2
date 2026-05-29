@@ -11,6 +11,7 @@ import UserList from 'pages/users/UserList';
 import OrderList from 'pages/orders/OrderList';
 import PaymentList from 'pages/payments/PaymentList';
 import ReviewList from 'pages/reviews/ReviewList';
+import BannerList from 'pages/banners/BannerList';
 
 const DashboardDefault = Loadable(lazy(() => import('pages/dashboard/default')));
 
@@ -38,6 +39,7 @@ const MainRoutes = {
     { path: 'categories', element: <CategoryList /> },
     { path: 'products/add', element: <AddProduct /> },
     { path: 'products/edit/:id', element: <EditProduct /> },
+    { path: 'banners', element: <BannerList /> },
     { path: 'users', element: <UserList /> },
     { path: 'orders', element: <OrderList /> },
     { path: 'payments', element: <PaymentList /> },

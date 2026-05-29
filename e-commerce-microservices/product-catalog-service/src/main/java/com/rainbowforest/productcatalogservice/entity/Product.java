@@ -35,7 +35,16 @@ public class Product {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "visibility_status", length = 20)
+    private String visibilityStatus;
     
+    @Column(name = "sold_count", columnDefinition = "int default 0")
+    private Integer soldCount = 0;
+
+    @Column(name = "average_rating", columnDefinition = "float default 0.0")
+    private Float averageRating = 0f;
+
     public Product() {}
 
     // ===== GETTERS / SETTERS =====
@@ -94,5 +103,28 @@ public class Product {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getVisibilityStatus() {
+        return visibilityStatus;
+    }
+
+    public void setVisibilityStatus(String visibilityStatus) {
+        this.visibilityStatus = visibilityStatus;
+    }
+    public Integer getSoldCount() {
+        return soldCount;
+    }
+
+    public void setSoldCount(Integer soldCount) {
+        this.soldCount = soldCount;
+    }
+
+    public Float getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(Float averageRating) {
+        this.averageRating = averageRating;
     }
 }

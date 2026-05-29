@@ -4,13 +4,14 @@ import com.rainbowforest.orderservice.domain.Item;
 import com.rainbowforest.orderservice.domain.Order;
 import com.rainbowforest.orderservice.domain.User;
 import com.rainbowforest.orderservice.feignclient.UserClient;
+import com.rainbowforest.orderservice.feignclient.ProductClient; // ĐÃ THÊM IMPORT NÀY
 import com.rainbowforest.orderservice.client.ShippingClient;
 import com.rainbowforest.orderservice.dto.ShippingDto;
 import com.rainbowforest.orderservice.http.header.HeaderGenerator;
 import com.rainbowforest.orderservice.service.CartService;
 import com.rainbowforest.orderservice.service.OrderService;
 import com.rainbowforest.orderservice.utilities.OrderUtilities;
-import com.rainbowforest.orderservice.repository.ItemRepository; // ĐÃ THÊM
+import com.rainbowforest.orderservice.repository.ItemRepository; 
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,7 +22,6 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
-// BỔ SUNG FIX LỖI CORS
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 public class OrderController {
@@ -31,6 +31,10 @@ public class OrderController {
 
     @Autowired
     private ShippingClient shippingClient;
+
+    // ĐÃ THÊM PRODUCT CLIENT ĐỂ LIÊN LẠC VỚI PRODUCT SERVICE
+    @Autowired
+    private ProductClient productClient;
 
     @Autowired
     private OrderService orderService;
@@ -42,7 +46,7 @@ public class OrderController {
     private HeaderGenerator headerGenerator;
 
     @Autowired
-    private ItemRepository itemRepository; // ĐÃ THÊM ĐỂ CỨU DỮ LIỆU
+    private ItemRepository itemRepository; 
 
     @PostMapping(value = "/order/{userId}")
     public ResponseEntity<Order> saveOrder(
@@ -55,7 +59,6 @@ public class OrderController {
         
         if(cart != null && user != null) {
             
-            // CHỐT CHẶN CUỐI: Lưu từng món hàng (Item) vào DB MySQL trước để tránh lỗi TransientObjectException
             for (Item item : cart) {
                 itemRepository.save(item); 
             }
@@ -63,9 +66,22 @@ public class OrderController {
             Order order = this.createOrder(cart, user);
 
             try{
+                // 1. Lưu hóa đơn vào CSDL Order
                 orderService.saveOrder(order);
 
-                // FIX LỖI TIMEOUT SHIPPING BẰNG TRY-CATCH
+                // ================== THÊM MỚI Ở ĐÂY ==================
+                // 2. Báo cho Product Service biết để cộng dồn số lượng Đã Bán
+                try {
+                    for (Item item : cart) {
+                        productClient.incrementSoldCount(item.getProduct().getId(), item.getQuantity());
+                    }
+                } catch (Exception prodEx) {
+                    System.out.println("CẢNH BÁO: Không thể cộng dồn số lượng bán sang Product Service.");
+                    prodEx.printStackTrace();
+                }
+                // ===================================================
+
+                // 3. Tạo vận đơn Shipping
                 try {
                     ShippingDto shippingDto = new ShippingDto();
                     shippingDto.setOrderId(order.getId());
@@ -76,7 +92,7 @@ public class OrderController {
                     shipEx.printStackTrace();
                 }
 
-                // Xóa giỏ hàng sau khi đặt thành công
+                // 4. Xóa giỏ hàng sau khi đặt thành công
                 cartService.deleteCart(cartId);
                 
                 return new ResponseEntity<Order>(

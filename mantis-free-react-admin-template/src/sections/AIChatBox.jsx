@@ -4,10 +4,6 @@ import {
 } from '@mui/material';
 import { MessageOutlined, CloseOutlined, SendOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 
-// API KEY CỦA BẠN 
-//const GEMINI_API_KEY = 'AIzaSyCZ7tajeqvxOaO9pxjjSWQWhNhfctwUei8';
-const GEMINI_API_KEY = 'AIzaSyAadoGsdbddCnKxcWlvHwwwbjVYZJLqfbo';
-
 export default function AIChatBox() {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
@@ -25,7 +21,7 @@ export default function AIChatBox() {
         scrollToBottom();
     }, [messages, isOpen]);
 
- const handleSend = async () => {
+    const handleSend = async () => {
         if (!input.trim()) return;
 
         const userMessage = input.trim();
@@ -35,40 +31,27 @@ export default function AIChatBox() {
         setIsLoading(true);
 
         try {
-            const systemContext = "Bạn là một nhân viên chăm sóc khách hàng thân thiện của nhà hàng thức ăn nhanh tên là RainbowFood. Hãy trả lời ngắn gọn, nhiệt tình và lịch sự. Câu hỏi của khách hàng là: ";
-            
-            // ĐÃ ĐỔI SANG MODEL GEMINI-1.5-FLASH (Ổn định và ít bị lỗi High Demand hơn)
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            // Đảm bảo URL này giống với URL bạn đang gọi thành công (8810 hoặc 8900)
+            const response = await fetch('http://localhost:8810/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: systemContext + userMessage }] }]
-                })
+                body: JSON.stringify({ message: userMessage })
             });
 
             const data = await response.json();
             
             if (!response.ok) {
-                console.error("Chi tiết lỗi từ Google:", data);
-                // Xử lý riêng lỗi quá tải của Google
-                if (data.error?.message?.includes("high demand") || data.error?.code === 503) {
-                    throw new Error("Hệ thống AI đang quá tải do có nhiều lượt truy cập. Bạn vui lòng thử lại sau vài giây nhé!");
-                }
-                throw new Error(data.error?.message || 'Lỗi kết nối API');
+                throw new Error(data.error || 'Lỗi kết nối đến Backend');
             }
 
-            if (data.candidates && data.candidates.length > 0) {
-                const botReply = data.candidates[0].content.parts[0].text;
-                setMessages(prev => [...prev, { sender: 'bot', text: botReply }]);
-            } else {
-                setMessages(prev =>[...prev, { sender: 'bot', text: 'Hệ thống AI đang bận, thử lại sau nhé!' }]);
-            }
+            // Lấy câu trả lời từ Backend và hiển thị
+            setMessages(prev => [...prev, { sender: 'bot', text: data.reply }]);
+
         } catch (error) {
             console.error("Lỗi:", error);
-            // Hiển thị thông báo lỗi thân thiện ra màn hình chat
-            setMessages(prev =>[...prev, { 
+            setMessages(prev => [...prev, { 
                 sender: 'bot', 
-                text: error.message.includes("quá tải") ? error.message : `Lỗi kết nối: ${error.message}. Xin kiểm tra lại mạng.` 
+                text: `Lỗi kết nối: ${error.message}. Xin kiểm tra lại mạng.` 
             }]);
         } finally {
             setIsLoading(false);
@@ -107,16 +90,45 @@ export default function AIChatBox() {
                                 )}
                                 
                                 <Box sx={{ 
-                                    maxWidth: '75%', p: 1.5, borderRadius: 2,
+                                    maxWidth: '85%', p: 1.5, borderRadius: 2,
                                     bgcolor: msg.sender === 'user' ? '#fff0e6' : '#f5f5f5',
                                     color: msg.sender === 'user' ? '#d43b11' : '#333',
                                     border: msg.sender === 'user' ? '1px solid #ffe0cc' : '1px solid #eaeaea',
                                     borderBottomRightRadius: msg.sender === 'user' ? 4 : 16,
                                     borderBottomLeftRadius: msg.sender === 'bot' ? 4 : 16,
+                                    // ĐÃ FIX: Chống tràn chữ ra khỏi khung chat
+                                    wordBreak: 'break-word',
+                                    overflow: 'hidden'
                                 }}>
-                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-                                        {msg.text}
-                                    </Typography>
+                                    
+                                    {/* NẾU LÀ BOT: Ép React Render mã HTML thành Hình Ảnh */}
+                                    {msg.sender === 'bot' ? (
+                                        <Box 
+                                            sx={{ 
+                                                lineHeight: 1.6, 
+                                                fontSize: '0.875rem',
+                                                fontFamily: '"Roboto","Helvetica","Arial",sans-serif',
+                                                '& a': { textDecoration: 'none' }, 
+                                                '& img': { 
+                                                    maxWidth: '100%', // Ép ảnh không được to hơn khung chat
+                                                    height: 'auto', 
+                                                    borderRadius: '8px', 
+                                                    marginTop: '8px',
+                                                    marginBottom: '4px',
+                                                    border: '1px solid #ddd',
+                                                    transition: 'transform 0.2s', 
+                                                    '&:hover': { transform: 'scale(1.02)' } 
+                                                } 
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: msg.text }}
+                                        />
+                                    ) : (
+                                        /* NẾU LÀ USER: In ra chữ bình thường */
+                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                                            {msg.text}
+                                        </Typography>
+                                    )}
+
                                 </Box>
 
                                 {msg.sender === 'user' && (

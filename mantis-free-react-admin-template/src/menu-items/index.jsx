@@ -4,7 +4,8 @@ import {
     UserOutlined, 
     ShoppingCartOutlined, 
     DollarOutlined,
-    CommentOutlined
+    CommentOutlined,
+    PictureOutlined
 } from '@ant-design/icons';
 
 const management = {
@@ -34,6 +35,14 @@ const management = {
             type: 'item',
             url: '/admin/categories',
             icon: AppstoreAddOutlined },
+        {
+            id: 'banners',
+            title: 'Banner',
+            type: 'item',
+            url: '/admin/banners',
+            icon: PictureOutlined,
+            breadcrumbs: false
+        },
         {
             id: 'users',
             title: 'Người dùng',
